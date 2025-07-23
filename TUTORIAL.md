@@ -7,13 +7,13 @@ Over time, billions of dollars in cryptocurrency have disappeared forever—not 
 **What You'll Learn In This Guide:**
 
 - Key concepts like Miden Accounts and Miden Notes
-- Creating time-locked cryptographic vaults for a trutless inheritance mechanism
+- Creating time-locked cryptographic vaults for a trustless inheritance mechanism
 - Working with Miden Assembly
 
 ## Prerequisites
 
 1. Ensure you have Rust installed locally on your machine. To install Rust, follow the instructions here: [Rust installation guide](https://www.rust-lang.org/tools/install)
-2. Ensure you have a local Miden node running. This is needed for interacting with the Miden network. To get the node running locally, follow the instructions on the [Miden Node Setup](https://0xmiden.github.io/miden-docs/imported/miden-tutorials/src/miden_node_setup.html) page.
+2. Ensure you have a local Miden node running. This is needed for interacting with the Miden network. To get the node running locally, follow the instructions on the [Miden Node Setup page](https://0xmiden.github.io/miden-docs/imported/miden-tutorials/src/miden_node_setup.html).
 
 ### What Are Miden Notes?
 
@@ -94,7 +94,7 @@ path = "src/main.rs"
 
 Now let's dive into the Miden Assembly code for creating our inheritance vault. Think of it as the "Smart Contract Code" of our Vault.
 
-To get started, let's create a new directly and file for our Note code:
+To get started, let's create a new directory and file for our Note code:
 
 ```bash
 mkdir masm
@@ -114,27 +114,27 @@ First, we are going to build the main skeleton of our Note code. We are going to
 Add this snippet to the `masm/inheritance_vault_note.masm` file:
 
 ```masm
-  use.miden::account
-  use.miden::note
-  use.miden::tx
-  use.miden::contracts::wallets::basic->wallet
+use.miden::account
+use.miden::note
+use.miden::tx
+use.miden::contracts::wallets::basic->wallet
 
-  const.ERR_WRONG_NUMBER_OF_INPUTS="Time-locked note expects exactly 3 note inputs"
-  const.ERR_WRONG_BENEFICIARY="Only designated beneficiary can claim this inheritance"
-  const.ERR_TOO_EARLY="Inheritance deadline has not passed yet"
+const.ERR_WRONG_NUMBER_OF_INPUTS="Time-locked note expects exactly 3 note inputs"
+const.ERR_WRONG_BENEFICIARY="Only designated beneficiary can claim this inheritance"
+const.ERR_TOO_EARLY="Inheritance deadline has not passed yet"
 
-  proc.add_note_assets_to_account
-      # Our logic for transferring funds after will be here
-  end
+proc.add_note_assets_to_account
+    # Our logic for transferring funds after will be here
+end
 
-  # Input stack: [beneficiary_suffix, beneficiary_prefix, deadline]
-  proc.verify_inheritance_claim
-      # Our logic for verifying an inheritance claim will be here
-  end
+# Input stack: [beneficiary_suffix, beneficiary_prefix, deadline]
+proc.verify_inheritance_claim
+    # Our logic for verifying an inheritance claim will be here
+end
 
-  begin
-      # Our main logic will be here
-  end
+begin
+    # Our main logic will be here
+end
 ```
 
 ### Step 3: Implementing the asset transfer logic
@@ -144,21 +144,54 @@ The following code will use the Miden Note library to obtain which assets are co
 Modify the `add_note_assets_to_account` function to implement the following code:
 
 ```masm
-  proc.add_note_assets_to_account
-      push.0 exec.note::get_assets
-      mul.4 dup.1 add
-      padw movup.5
-      dup dup.6 neq
-      while.true
-          dup movdn.5
-          mem_loadw
-          padw swapw padw padw swapdw
-          call.wallet::receive_asset
-          dropw dropw dropw
-          movup.4 add.4 dup dup.6 neq
-      end
-      drop dropw drop
-  end
+# Input Stack: []
+proc.add_note_assets_to_account
+    push.0 exec.note::get_assets
+    # => [num_of_assets, 0 = ptr, ...]
+
+    # compute the pointer at which we should stop iterating
+    mul.4 dup.1 add
+    # => [end_ptr, ptr, ...]
+
+    # pad the stack and move the pointer to the top
+    padw movup.5
+    # => [ptr, 0, 0, 0, 0, end_ptr, ...]
+
+    # compute the loop latch
+    dup dup.6 neq
+    # => [latch, ptr, 0, 0, 0, 0, end_ptr, ...]
+
+    while.true
+      # => [ptr, 0, 0, 0, 0, end_ptr, ...]
+
+      # save the pointer so that we can use it later
+      dup movdn.5
+      # => [ptr, 0, 0, 0, 0, ptr, end_ptr, ...]
+
+      # load the asset
+      mem_loadw
+      # => [ASSET, ptr, end_ptr, ...]
+
+      # pad the stack before call
+      padw swapw padw padw swapdw
+      # => [ASSET, pad(12), ptr, end_ptr, ...]
+
+      # add asset to the account
+      call.wallet::receive_asset
+      # => [pad(16), ptr, end_ptr, ...]
+
+      # clean the stack after call
+      dropw dropw dropw
+      # => [0, 0, 0, 0, ptr, end_ptr, ...]
+
+      # increment the pointer and compare it to the end_ptr
+      movup.4 add.4 dup dup.6 neq
+      # => [latch, ptr+4, ASSET, end_ptr, ...]
+    end
+
+    # clear the stack
+    drop dropw drop
+end
 ```
 
 ### Step 4: Implementing the owner verification logic
@@ -172,35 +205,35 @@ Make sure to read each line of code and respective comment to understand how the
 Modify the main function function to implement the following code:
 
 ```masm
-  begin
-      # Push inputs to stack
-      push.0 exec.note::get_inputs
-      # Stack: [num_inputs, inputs_ptr]
-      eq.3 assert.err=ERR_WRONG_NUMBER_OF_INPUTS
-      # Stack: [inputs_ptr]
-      padw movup.4 mem_loadw drop
-      # Stack: [beneficiary_suffix, beneficiary_prefix, deadline]
+begin
+    # Push inputs to stack
+    push.0 exec.note::get_inputs
+    # Stack: [num_inputs, inputs_ptr]
+    eq.3 assert.err=ERR_WRONG_NUMBER_OF_INPUTS
+    # Stack: [inputs_ptr]
+    padw movup.4 mem_loadw drop
+    # Stack: [beneficiary_suffix, beneficiary_prefix, deadline]
 
-      # Push sender id to stack
-      exec.note::get_sender
-      # Stack: [sender_suffix, sender_prefix, beneficiary_suffix, beneficiary_prefix, deadline]
+    # Push sender id to stack
+    exec.note::get_sender
+    # Stack: [sender_suffix, sender_prefix, beneficiary_suffix, beneficiary_prefix, deadline]
 
-      # Push current id to the stack
-      exec.account::get_id
-      # Stack: [account_suffix, account_prefix, sender_suffix, sender_prefix, beneficiary_suffix, beneficiary_prefix, deadline]
+    # Push current id to the stack
+    exec.account::get_id
+    # Stack: [account_suffix, account_prefix, sender_suffix, sender_prefix, beneficiary_suffix, beneficiary_prefix, deadline]
 
-      # Do what it used to do before (sender address verification, if not the same => verify inheritance claim with loaded stack)
-      exec.account::is_id_equal
-      # Stack: [is_equal, beneficiary_suffix, beneficiary_prefix, deadline]
+    # Do what it used to do before (sender address verification, if not the same => verify inheritance claim with loaded stack)
+    exec.account::is_id_equal
+    # Stack: [is_equal, beneficiary_suffix, beneficiary_prefix, deadline]
 
-      if.true
-        # Clear all stack elements and ensure clean state
-        drop drop drop
-        exec.add_note_assets_to_account
-      else
-        exec.verify_inheritance_claim
-      end
-  end
+    if.true
+      # Clear all stack elements and ensure clean state
+      drop drop drop
+      exec.add_note_assets_to_account
+    else
+      exec.verify_inheritance_claim
+    end
+end
 ```
 
 ### Step 5: Implementing the claim verification logic
@@ -209,90 +242,151 @@ Finally, we are going to implement the logic of the `verify_inheritance_claim` f
 
 Again, it's a good idea to read each line of code and respective comment to thoroughly understand the Assembly code.
 
-Modify the `add_note_assets_to_account` function to implement the following code:
+Modify the `verify_inheritance_claim` function to implement the following code:
 
 ```masm
-  use.miden::account
-  use.miden::note
-  use.miden::tx
-  use.miden::contracts::wallets::basic->wallet
+# Input stack: [beneficiary_suffix, beneficiary_prefix, deadline]
+proc.verify_inheritance_claim
+    # Push current account id to the stack
+    exec.account::get_id
+    # Stack: [account_suffix, account_prefix, beneficiary_suffix, beneficiary_prefix, deadline]
 
-  const.ERR_WRONG_NUMBER_OF_INPUTS="Time-locked note expects exactly 3 note inputs"
-  const.ERR_WRONG_BENEFICIARY="Only designated beneficiary can claim this inheritance"
-  const.ERR_TOO_EARLY="Inheritance deadline has not passed yet"
+    # Verify if the current account id is the same as the beneficiary id
+    exec.account::is_id_equal assert.err=ERR_WRONG_BENEFICIARY
+    # Stack: [deadline]
 
-  proc.add_note_assets_to_account
-      push.0 exec.note::get_assets
-      mul.4 dup.1 add
-      padw movup.5
-      dup dup.6 neq
-      while.true
-          dup movdn.5
-          mem_loadw
-          padw swapw padw padw swapdw
-          call.wallet::receive_asset
-          dropw dropw dropw
-          movup.4 add.4 dup dup.6 neq
-      end
-      drop dropw drop
-  end
-
-  # Input stack: [beneficiary_suffix, beneficiary_prefix, deadline]
-  proc.verify_inheritance_claim
-
-      # Push current account id to the stack
-      exec.account::get_id
-      # Stack: [account_suffix, account_prefix, beneficiary_suffix, beneficiary_prefix, deadline]
-
-      # Verify if the current account id is the same as the beneficiary id
-      exec.account::is_id_equal assert.err=ERR_WRONG_BENEFICIARY
-      # Stack: [deadline]
-
-      # Push current block number to the stack
-      exec.tx::get_block_number
-      # Stack: [block_number, deadline]
+    # Push current block number to the stack
+    exec.tx::get_block_number
+    # Stack: [block_number, deadline]
 
 
-      # Verify the deadline has passed
-      gte assert.err=ERR_TOO_EARLY
-      # Stack: []
+    # Verify the deadline has passed
+    gte assert.err=ERR_TOO_EARLY
+    # Stack: []
 
-      # Execute release of funds
-      exec.add_note_assets_to_account
-  end
-
-  begin
-      # Push inputs to stack
-      push.0 exec.note::get_inputs
-      # Stack: [num_inputs, inputs_ptr]
-      eq.3 assert.err=ERR_WRONG_NUMBER_OF_INPUTS
-      # Stack: [inputs_ptr]
-      padw movup.4 mem_loadw drop
-      # Stack: [beneficiary_suffix, beneficiary_prefix, deadline]
-
-      # Push sender id to stack
-      exec.note::get_sender
-      # Stack: [sender_suffix, sender_prefix, beneficiary_suffix, beneficiary_prefix, deadline]
-
-      # Push current id to the stack
-      exec.account::get_id
-      # Stack: [account_suffix, account_prefix, sender_suffix, sender_prefix, beneficiary_suffix, beneficiary_prefix, deadline]
-
-      # Do what it used to do before (sender address verification, if not the same => verify inheritance claim with loaded stack)
-      exec.account::is_id_equal
-      # Stack: [is_equal, beneficiary_suffix, beneficiary_prefix, deadline]
-
-      if.true
-        # Clear all stack elements and ensure clean state
-        drop drop drop
-        exec.add_note_assets_to_account
-      else
-        exec.verify_inheritance_claim
-      end
-  end
+    # Execute release of funds
+    exec.add_note_assets_to_account
+end
 ```
 
-### Step 6: Initializing the Rust client
+### Step 6: Final Note Code
+
+After following the previous steps, the `masm/inheritance_vault_note.masm` should look like the following:
+
+```masm
+use.miden::account
+use.miden::note
+use.miden::tx
+use.miden::contracts::wallets::basic->wallet
+
+const.ERR_WRONG_NUMBER_OF_INPUTS="Time-locked note expects exactly 3 note inputs"
+const.ERR_WRONG_BENEFICIARY="Only designated beneficiary can claim this inheritance"
+const.ERR_TOO_EARLY="Inheritance deadline has not passed yet"
+
+# Input Stack: []
+proc.add_note_assets_to_account
+    push.0 exec.note::get_assets
+    # => [num_of_assets, 0 = ptr, ...]
+
+    # compute the pointer at which we should stop iterating
+    mul.4 dup.1 add
+    # => [end_ptr, ptr, ...]
+
+    # pad the stack and move the pointer to the top
+    padw movup.5
+    # => [ptr, 0, 0, 0, 0, end_ptr, ...]
+
+    # compute the loop latch
+    dup dup.6 neq
+    # => [latch, ptr, 0, 0, 0, 0, end_ptr, ...]
+
+    while.true
+      # => [ptr, 0, 0, 0, 0, end_ptr, ...]
+
+      # save the pointer so that we can use it later
+      dup movdn.5
+      # => [ptr, 0, 0, 0, 0, ptr, end_ptr, ...]
+
+      # load the asset
+      mem_loadw
+      # => [ASSET, ptr, end_ptr, ...]
+
+      # pad the stack before call
+      padw swapw padw padw swapdw
+      # => [ASSET, pad(12), ptr, end_ptr, ...]
+
+      # add asset to the account
+      call.wallet::receive_asset
+      # => [pad(16), ptr, end_ptr, ...]
+
+      # clean the stack after call
+      dropw dropw dropw
+      # => [0, 0, 0, 0, ptr, end_ptr, ...]
+
+      # increment the pointer and compare it to the end_ptr
+      movup.4 add.4 dup dup.6 neq
+      # => [latch, ptr+4, ASSET, end_ptr, ...]
+    end
+
+    # clear the stack
+    drop dropw drop
+end
+
+# Input stack: [beneficiary_suffix, beneficiary_prefix, deadline]
+proc.verify_inheritance_claim
+    # Push current account id to the stack
+    exec.account::get_id
+    # Stack: [account_suffix, account_prefix, beneficiary_suffix, beneficiary_prefix, deadline]
+
+    # Verify if the current account id is the same as the beneficiary id
+    exec.account::is_id_equal assert.err=ERR_WRONG_BENEFICIARY
+    # Stack: [deadline]
+
+    # Push current block number to the stack
+    exec.tx::get_block_number
+    # Stack: [block_number, deadline]
+
+
+    # Verify the deadline has passed
+    gte assert.err=ERR_TOO_EARLY
+    # Stack: []
+
+    # Execute release of funds
+    exec.add_note_assets_to_account
+end
+
+begin
+    # Push inputs to stack
+    push.0 exec.note::get_inputs
+    # Stack: [num_inputs, inputs_ptr]
+    eq.3 assert.err=ERR_WRONG_NUMBER_OF_INPUTS
+    # Stack: [inputs_ptr]
+    padw movup.4 mem_loadw drop
+    # Stack: [beneficiary_suffix, beneficiary_prefix, deadline]
+
+    # Push sender id to stack
+    exec.note::get_sender
+    # Stack: [sender_suffix, sender_prefix, beneficiary_suffix, beneficiary_prefix, deadline]
+
+    # Push current id to the stack
+    exec.account::get_id
+    # Stack: [account_suffix, account_prefix, sender_suffix, sender_prefix, beneficiary_suffix, beneficiary_prefix, deadline]
+
+    # Do what it used to do before (sender address verification, if not the same => verify inheritance claim with loaded stack)
+    exec.account::is_id_equal
+    # Stack: [is_equal, beneficiary_suffix, beneficiary_prefix, deadline]
+
+    if.true
+      # Clear all stack elements and ensure clean state
+      drop drop drop
+      exec.add_note_assets_to_account
+    else
+      exec.verify_inheritance_claim
+    end
+end
+```
+
+### Step 7: Initializing the Rust client
 
 Before interacting with the Miden network to publish our inheritance vault, we must instantiate the Miden client. It will be our gateway to the Miden network. Also, we will instantiate a local keystore, which is used to store private keys for accounts. Finally, we will also add a helper function to create and deploy a token faucet. A faucet account on Miden mints fungible tokens.
 
@@ -375,7 +469,7 @@ async fn main() -> Result<(), ClientError> {
 }
 ```
 
-### Step 7: Create accounts and deploy faucet
+### Step 8: Create accounts and deploy faucet
 
 In this step, we will generate two Miden Accounts, the owner and the beneficiary. We will also deploy a faucet, which we are going to use to mint new "IHT" tokens. These tokens will be put into the vault for the inheritance claim.
 
@@ -418,11 +512,11 @@ Add the following code to the end of the `main()` function:
     let sync_summary = client.sync_state().await.unwrap();
 ```
 
-### Step 8: Deploy the vault
+### Step 9: Deploy the vault
 
 This step will be our most extensive one. Make sure to read the explanations carefully to understand the individual components properly.
 
-First, we will use an assembler to compile our Note code. [TODO: Explain briefly what an Assembler is]
+First, we will use an assembler to compile our Note code. The assembler is a core component of the Miden VM that translates human-readable Miden Assembly code into executable bytecode that the VM can understand. For our inheritance vault, the assembler takes our Note's MASM code (which defines the inheritance logic) and converts it into a format that can be executed by Miden's virtual machine when the Note is consumed.
 
 After that, we need to specify and compose the following to instantiate the Miden Note:
 
@@ -438,6 +532,17 @@ After having composed all of these values using the Miden library helper functio
 Add the following code to the end of the `main()` function:
 
 ```rust
+    // set deadline to 5 blocks from current
+    let deadline = sync_summary.block_num.as_u64() + 3;
+    println!("Deadline: {}", deadline);
+
+    // compile script
+    let assembler = TransactionKernel::assembler().with_debug_mode(true);
+    let note_code = fs::read_to_string(Path::new("masm/inheritance_vault_note.masm")).unwrap();
+    let note_script = NoteScript::compile(note_code, assembler).unwrap();
+
+    println!("Compiled note script!");
+
     let note_inputs = NoteInputs::new(vec![Felt::new(deadline), beneficiary_account.id().suffix(), beneficiary_account.id().prefix().as_felt()]).unwrap();
     let serial_num = client.rng().draw_word();
     let recipient = NoteRecipient::new(serial_num, note_script, note_inputs);
@@ -469,9 +574,9 @@ Add the following code to the end of the `main()` function:
     println!("Note submitted successfully! {:?} \n", tx_result.executed_transaction().id());
 ```
 
-### Step 9: Consume the Note as the beneficiary
+### Step 10: Consume the Note as the beneficiary
 
-As our last step, we will consume and claim the inheritance funds as the benficiary.
+As our last step, we will consume and claim the inheritance funds as the beneficiary.
 
 First we will wait 10 seconds to ensure that the deadline has passed. After that, we build and submit a transaction request to claim the inheritance funds (i.e. consuming the Note).
 
@@ -499,7 +604,7 @@ Add the following code to the end of the `main()` function:
     );
 ```
 
-### Step 10: Run the final code
+### Step 11: Run the final code
 
 The final `src/main.rs` file should look like this:
 
@@ -620,7 +725,7 @@ async fn main() -> Result<(), ClientError> {
 
     // compile script
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
-    let note_code = fs::read_to_string(Path::new("masm/notes/inheritance_vault_note.masm")).unwrap();
+    let note_code = fs::read_to_string(Path::new("masm/inheritance_vault_note.masm")).unwrap();
     let note_script = NoteScript::compile(note_code, assembler).unwrap();
 
     println!("Compiled note script!");
