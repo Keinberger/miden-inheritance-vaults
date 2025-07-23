@@ -114,7 +114,7 @@ async fn main() -> Result<(), ClientError> {
 
     // compile script
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
-    let note_code = fs::read_to_string(Path::new("masm/notes/inheritance_vault_note.masm")).unwrap();
+    let note_code = fs::read_to_string(Path::new("masm /inheritance_vault_note.masm")).unwrap();
     let note_script = NoteScript::compile(note_code, assembler).unwrap();
     
     println!("Compiled note script!");
