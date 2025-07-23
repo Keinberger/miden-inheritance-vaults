@@ -42,7 +42,7 @@ Think of Miden Accounts like fancy Ethereum EOA's, with the additional ability o
 
 ## Architecture Overview: How Our Inheritance Vault Works
 
-Our inheritance vault system operates on a simple but powerful principle:
+Our inheritance vault system operates on simple principles:
 
 1. **Vault Creation**: The owner creates a note containing inheritance funds (tokens) with a built-in deadline
 2. **Inheritance Claim**: After the deadline passes, the designated beneficiary can claim the inheritance funds
@@ -51,9 +51,9 @@ Our inheritance vault system operates on a simple but powerful principle:
 Here's the conceptual flow:
 
 ```
-Owner Creates Vault → Vault Active → (Optional): Owner Extends Deadline By Claiming Assets & Creating New Vault
+Owner Creates Vault → Vault Active → (Optional): Owner Extends Deadline
                                    ↓
-                      Deadline Passes → Beneficiary Claims Assets
+                                   Deadline Passes → Beneficiary Claims Assets
 ```
 
 The beauty of this system is its **trustless nature** with no intermediaries, no courts, no third parties. Just mathematics ensuring that either the owner maintains control or the beneficiary gains access.
@@ -92,6 +92,12 @@ path = "src/main.rs"
 
 ### Step 2: Building the core vault script
 
+#### Disclaimer about Miden Assembly
+
+Miden Assembly is a low-level, stack-based language which works primarily with operand instructions and manipulating stack. If you are unfamiliar with working with low-level languages, you can read our comprehensive documentation on Miden Assembly and learn how it works.
+
+You can find the docs here: [Miden Assembly Documentation](https://0xmiden.github.io/miden-docs/glossary.html?highlight=assembly#miden-assembly)
+
 Now let's dive into the Miden Assembly code for creating our inheritance vault. Think of it as the "Smart Contract Code" of our Vault.
 
 To get started, let's create a new directory and file for our Note code:
@@ -100,12 +106,6 @@ To get started, let's create a new directory and file for our Note code:
 mkdir masm
 touch masm/inheritance_vault_note.masm
 ```
-
-#### Disclaimer about Miden Assembly
-
-Miden Assembly is a low-level, stack-based language which works primarily with operand instructions and manipulating stack. If you are unfamiliar with working with low-level languages, you can read our comprehensive documentation on Miden Assembly and learn how it works.
-
-[Miden Assembly Documentation](https://0xmiden.github.io/miden-docs/glossary.html?highlight=assembly#miden-assembly)
 
 Open this file to implement our first lines of code.
 
@@ -471,7 +471,7 @@ async fn main() -> Result<(), ClientError> {
 
 ### Step 8: Create accounts and deploy faucet
 
-In this step, we will generate two Miden Accounts, the owner and the beneficiary. We will also deploy a faucet, which we are going to use to mint new "IHT" tokens. These tokens will be put into the vault for the inheritance claim.
+In this step, we will generate two Miden Accounts, the owner and the beneficiary. We will also deploy a faucet, which we are going to use to mint new "INH" tokens. These tokens will be put into the vault for the inheritance claim.
 
 Add the following code to the end of the `main()` function:
 
@@ -492,7 +492,7 @@ Add the following code to the end of the `main()` function:
     );
 
     // -------------------------------------------------------------------------
-    // STEP 2: Deploy faucet and mint IHT tokens for owner
+    // STEP 2: Deploy faucet and mint INH tokens for owner
     // -------------------------------------------------------------------------
 
     println!("\nDeploying a new fungible faucet.");
@@ -696,7 +696,7 @@ async fn main() -> Result<(), ClientError> {
     );
 
     // -------------------------------------------------------------------------
-    // STEP 2: Deploy faucet and mint IHT tokens for owner
+    // STEP 2: Deploy faucet and mint INH tokens for owner
     // -------------------------------------------------------------------------
 
     println!("\nDeploying a new fungible faucet.");

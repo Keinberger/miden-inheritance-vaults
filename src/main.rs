@@ -85,7 +85,7 @@ async fn main() -> Result<(), ClientError> {
     );
 
     // -------------------------------------------------------------------------
-    // STEP 2: Deploy faucet and mint IHT tokens for owner
+    // STEP 2: Deploy faucet and mint INH tokens for owner
     // -------------------------------------------------------------------------
 
     println!("\nDeploying a new fungible faucet.");
