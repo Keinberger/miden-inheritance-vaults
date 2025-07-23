@@ -50,7 +50,6 @@ The complete tutorial [TUTORIAL.md](TUTORIAL.md) covers everything needed to bui
 - [Miden Documentation](https://0xmiden.github.io/miden-docs/)
 - [Miden Assembly Documentation](https://0xmiden.github.io/miden-docs/glossary.html?highlight=assembly#miden-assembly)
 - [Miden Notes Deep Dive](https://0xmiden.github.io/miden-docs/imported/miden-base/src/note.html)
-- [Other Miden Tutorials](https://0xmiden.github.io/miden-docs/imported/miden-tutorials/)
 
 ## Impact
 
