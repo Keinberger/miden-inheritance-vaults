@@ -1,0 +1,78 @@
+  use.miden::account
+  use.miden::note
+  use.miden::tx
+  use.miden::contracts::wallets::basic->wallet
+  
+  const.ERR_WRONG_NUMBER_OF_INPUTS="Time-locked note expects exactly 3 note inputs"
+  const.ERR_WRONG_BENEFICIARY="Only designated beneficiary can claim this inheritance"
+  const.ERR_TOO_EARLY="Inheritance deadline has not passed yet"
+  
+  proc.add_note_assets_to_account
+      push.0 exec.note::get_assets
+      mul.4 dup.1 add
+      padw movup.5
+      dup dup.6 neq
+      while.true
+          dup movdn.5
+          mem_loadw
+          padw swapw padw padw swapdw
+          call.wallet::receive_asset
+          dropw dropw dropw
+          movup.4 add.4 dup dup.6 neq
+      end
+      drop dropw drop
+  end
+  
+  # Input stack: [beneficiary_suffix, beneficiary_prefix, deadline]
+  proc.verify_inheritance_claim
+      
+      # Push current account id to the stack
+      exec.account::get_id
+      # Stack: [account_suffix, account_prefix, beneficiary_suffix, beneficiary_prefix, deadline]
+
+      # Verify if the current account id is the same as the beneficiary id
+      exec.account::is_id_equal assert.err=ERR_WRONG_BENEFICIARY
+      # Stack: [deadline]
+  
+      # Push current block number to the stack
+      exec.tx::get_block_number
+      # Stack: [block_number, deadline]
+
+  
+      # Verify the deadline has passed
+      gte assert.err=ERR_TOO_EARLY
+      # Stack: []
+  
+      # Execute release of funds
+      exec.add_note_assets_to_account
+  end
+  
+  begin
+      # Push inputs to stack
+      push.0 exec.note::get_inputs
+      # Stack: [num_inputs, inputs_ptr]
+      eq.3 assert.err=ERR_WRONG_NUMBER_OF_INPUTS
+      # Stack: [inputs_ptr]
+      padw movup.4 mem_loadw drop
+      # Stack: [beneficiary_suffix, beneficiary_prefix, deadline]
+  
+      # Push sender id to stack
+      exec.note::get_sender
+      # Stack: [sender_suffix, sender_prefix, beneficiary_suffix, beneficiary_prefix, deadline]
+  
+      # Push current id to the stack
+      exec.account::get_id
+      # Stack: [account_suffix, account_prefix, sender_suffix, sender_prefix, beneficiary_suffix, beneficiary_prefix, deadline]
+  
+      # Do what it used to do before (sender address verification, if not the same => verify inheritance claim with loaded stack)
+      exec.account::is_id_equal
+      # Stack: [is_equal, beneficiary_suffix, beneficiary_prefix, deadline]
+  
+      if.true
+        # Clear all stack elements and ensure clean state
+        drop drop drop
+        exec.add_note_assets_to_account
+      else
+        exec.verify_inheritance_claim
+      end
+  end 
