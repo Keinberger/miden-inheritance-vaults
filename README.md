@@ -2,7 +2,7 @@
 
 A comprehensive tutorial for building trustless cryptocurrency inheritance vaults using Miden Notes and Miden Assembly.
 
-## 🎯 Overview
+## Overview
 
 This repository contains a complete implementation of an inheritance vault system that solves one of cryptocurrency's most critical problems: the billions of dollars lost when crypto holders pass away without proper inheritance mechanisms.
 
@@ -16,11 +16,11 @@ This repository contains a complete implementation of an inheritance vault syste
 - **Miden Node**: Set up a local Miden node using the [Miden Node Setup guide](https://0xmiden.github.io/miden-docs/imported/miden-tutorials/src/miden_node_setup.html)
 - Basic familiarity with command-line tools
 
-## 🎓 Tutorial
+## Tutorial
 
 The complete tutorial [TUTORIAL.md](TUTORIAL.md) covers everything needed to build inheritance vaults on Miden. Open the [TUTORIAL.md](TUTORIAL.md) file to get started.
 
-## 🚦 Quick Start
+## Quick Start
 
 1. **Clone and setup**:
 
@@ -45,7 +45,7 @@ The complete tutorial [TUTORIAL.md](TUTORIAL.md) covers everything needed to bui
 
 5. **Follow along** with the detailed explanations in `TUTORIAL.md`
 
-## 📚 Additional Resources
+## Additional Resources
 
 - [Miden Documentation](https://0xmiden.github.io/miden-docs/)
 - [Miden Assembly Documentation](https://0xmiden.github.io/miden-docs/glossary.html?highlight=assembly#miden-assembly)
@@ -61,7 +61,3 @@ This tutorial demonstrates how blockchain technology can solve real-world proble
 - Provides mathematical certainty
 - Preserves privacy through zero-knowledge proofs
 - Offers flexible control for asset owners
-
-## 📄 License & Contributing
-
-This tutorial is provided for educational purposes. Feel free to extend, modify, and improve upon the concepts presented here.
